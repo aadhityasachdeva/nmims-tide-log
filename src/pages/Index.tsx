@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import StatsOverview from "@/components/StatsOverview";
 import AttendanceCard from "@/components/AttendanceCard";
+import { OnboardingForm } from "@/components/OnboardingForm";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +15,12 @@ interface Subject {
 }
 
 const Index = () => {
+  const [userProfile, setUserProfile] = useState<{
+    sapId: string;
+    name: string;
+    division: string;
+  } | null>(null);
+
   const [subjects, setSubjects] = useState<Subject[]>([
     { id: "1", name: "Business Statistics", attended: 18, total: 22 },
     { id: "2", name: "Financial Accounting", attended: 20, total: 24 },
@@ -47,11 +54,20 @@ const Index = () => {
     ? Math.round((attendedClasses / totalClasses) * 100) 
     : 0;
 
+  if (!userProfile) {
+    return <OnboardingForm onComplete={setUserProfile} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
       <main className="container mx-auto px-4 py-8 space-y-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-foreground">{userProfile.name}</h2>
+          <p className="text-muted-foreground">SAP ID: {userProfile.sapId} | Division: {userProfile.division}</p>
+        </div>
+
         <StatsOverview
           overallPercentage={overallPercentage}
           totalClasses={totalClasses}
