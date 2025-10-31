@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export const OnboardingForm = ({ onComplete }: OnboardingFormProps) => {
   const [name, setName] = useState("");
   const [division, setDivision] = useState("");
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,9 @@ export const OnboardingForm = ({ onComplete }: OnboardingFormProps) => {
       return;
     }
 
-    onComplete({ sapId, name, division });
+    const userProfile = { sapId, name, division };
+    onComplete(userProfile);
+    navigate("/tracker", { state: { userProfile } });
   };
 
   return (
