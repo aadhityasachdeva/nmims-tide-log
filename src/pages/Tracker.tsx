@@ -26,39 +26,57 @@ const Tracker = () => {
   const userProfile = location.state?.userProfile || { sapId: "", name: "", division: "" };
 
   const [subjects, setSubjects] = useState<Subject[]>([
-    { id: "1", name: "Business Statistics", attended: 18, total: 22 },
-    { id: "2", name: "Financial Accounting", attended: 20, total: 24 },
-    { id: "3", name: "Marketing Management", attended: 15, total: 20 },
-    { id: "4", name: "Business Economics", attended: 19, total: 23 },
-    { id: "5", name: "Organizational Behaviour", attended: 21, total: 25 },
+    { id: "1", name: "Introduction to Visual Effect", attended: 0, total: 0 },
+    { id: "2", name: "Media Economics", attended: 0, total: 0 },
+    { id: "3", name: "Entrepreneurship", attended: 0, total: 0 },
+    { id: "4", name: "Marketing Analytics", attended: 0, total: 0 },
+    { id: "5", name: "Introduction to Graphic Design", attended: 0, total: 0 },
+    { id: "6", name: "Retail Management", attended: 0, total: 0 },
+    { id: "7", name: "Market Research - II", attended: 0, total: 0 },
   ]);
 
-  // Sample timetable - can be customized by user
-  const [timetable] = useState<Timetable>({
+  interface TimetableSlot {
+    subject: string;
+    professor: string;
+    room: string;
+  }
+
+  interface TimetableData {
+    [day: string]: {
+      [slot: string]: TimetableSlot;
+    };
+  }
+
+  const [timetable] = useState<TimetableData>({
     Monday: {
-      "9:00 AM": "Business Statistics",
-      "11:00 AM": "Financial Accounting",
-      "2:00 PM": "Marketing Management",
+      "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
+      "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
+      "9:45 - 10:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
     },
     Tuesday: {
-      "9:00 AM": "Business Economics",
-      "11:00 AM": "Organizational Behaviour",
-      "2:00 PM": "Business Statistics",
+      "7:00 - 8:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
+      "8:00 - 9:00": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
+      "9:45 - 10:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+      "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+      "11:45 - 12:45": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
     },
     Wednesday: {
-      "9:00 AM": "Financial Accounting",
-      "11:00 AM": "Marketing Management",
-      "2:00 PM": "Business Economics",
+      "7:00 - 8:00": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+      "8:00 - 9:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+      "9:45 - 10:45": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
+      "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
     },
     Thursday: {
-      "9:00 AM": "Organizational Behaviour",
-      "11:00 AM": "Business Statistics",
-      "2:00 PM": "Financial Accounting",
+      "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+      "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+      "10:45 - 11:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+      "11:45 - 12:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
     },
     Friday: {
-      "9:00 AM": "Marketing Management",
-      "11:00 AM": "Business Economics",
-      "2:00 PM": "Organizational Behaviour",
+      "7:00 - 8:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+      "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+      "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+      "10:45 - 11:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
     },
   });
 
@@ -127,13 +145,15 @@ const Tracker = () => {
                     {day}
                   </h3>
                   <div className="space-y-2">
-                    {Object.entries(timetable[day] || {}).map(([time, subject]) => (
+                    {Object.entries(timetable[day] || {}).map(([time, slot]) => (
                       <div
                         key={`${day}-${time}`}
                         className="bg-secondary/50 p-2 rounded-md text-xs hover:bg-secondary transition-colors"
                       >
                         <p className="font-medium text-foreground">{time}</p>
-                        <p className="text-muted-foreground mt-1">{subject}</p>
+                        <p className="text-primary font-semibold mt-1">{slot.subject}</p>
+                        <p className="text-muted-foreground text-[10px]">{slot.professor}</p>
+                        <p className="text-muted-foreground text-[10px]">Room: {slot.room}</p>
                       </div>
                     ))}
                   </div>
