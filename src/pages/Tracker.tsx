@@ -106,6 +106,8 @@ const Tracker = () => {
     : 0;
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const dayIndex = new Date().getDay();
+  const currentDay = dayIndex >= 1 && dayIndex <= 5 ? days[dayIndex - 1] : "Monday";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/10">
@@ -123,13 +125,13 @@ const Tracker = () => {
           attendedClasses={attendedClasses}
         />
 
-        {/* Timetable Section */}
-        <Card className="shadow-elegant">
+        {/* Today's Timetable Section */}
+        <Card className="shadow-elegant border-primary/20">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                <CardTitle>Weekly Timetable</CardTitle>
+                <CardTitle>Today's Schedule - {currentDay}</CardTitle>
               </div>
               <Button variant="outline" size="sm">
                 <Plus className="h-4 w-4 mr-2" />
@@ -138,28 +140,23 @@ const Tracker = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {days.map((day) => (
-                <div key={day} className="space-y-3">
-                  <h3 className="font-semibold text-sm text-primary border-b border-primary/20 pb-2">
-                    {day}
-                  </h3>
-                  <div className="space-y-2">
-                    {Object.entries(timetable[day] || {}).map(([time, slot]) => (
-                      <div
-                        key={`${day}-${time}`}
-                        className="bg-secondary/50 p-2 rounded-md text-xs hover:bg-secondary transition-colors"
-                      >
-                        <p className="font-medium text-foreground">{time}</p>
-                        <p className="text-primary font-semibold mt-1">{slot.subject}</p>
-                        <p className="text-muted-foreground text-[10px]">{slot.professor}</p>
-                        <p className="text-muted-foreground text-[10px]">Room: {slot.room}</p>
-                      </div>
-                    ))}
+            {timetable[currentDay] && Object.keys(timetable[currentDay]).length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {Object.entries(timetable[currentDay]).map(([time, slot]) => (
+                  <div
+                    key={`${currentDay}-${time}`}
+                    className="bg-gradient-to-br from-primary/10 to-secondary/50 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all"
+                  >
+                    <p className="font-bold text-primary text-sm">{time}</p>
+                    <p className="text-foreground font-semibold mt-2">{slot.subject}</p>
+                    <p className="text-muted-foreground text-sm mt-1">{slot.professor}</p>
+                    <p className="text-muted-foreground text-xs mt-1">Room: {slot.room}</p>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No classes scheduled for today</p>
+            )}
           </CardContent>
         </Card>
 
