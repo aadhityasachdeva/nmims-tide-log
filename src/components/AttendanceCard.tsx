@@ -20,8 +20,8 @@ const AttendanceCard = ({
   onMarkAbsent,
 }: AttendanceCardProps) => {
   const percentage = total > 0 ? Math.round((attended / total) * 100) : 0;
-  const isLow = percentage < 75;
-  const isWarning = percentage >= 75 && percentage < 85;
+  const isLow = percentage < 80;
+  const isWarning = percentage >= 80 && percentage < 90;
 
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
@@ -57,7 +57,7 @@ const AttendanceCard = ({
           />
           {isLow && (
             <p className="text-xs text-accent font-medium">
-              ⚠️ Attendance below 75% - Risk of detention
+              ⚠️ Attendance below 80% - Risk of detention
             </p>
           )}
         </div>
