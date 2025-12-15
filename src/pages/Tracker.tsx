@@ -13,12 +13,9 @@ interface Subject {
   name: string;
   attended: number;
   total: number;
-}
-
-interface Timetable {
-  [day: string]: {
-    [slot: string]: string;
-  };
+  credits: number;
+  maxMissable: number;
+  lecturesPerWeek: number;
 }
 
 const Tracker = () => {
@@ -26,13 +23,13 @@ const Tracker = () => {
   const userProfile = location.state?.userProfile || { sapId: "", name: "", division: "" };
 
   const [subjects, setSubjects] = useState<Subject[]>([
-    { id: "1", name: "Introduction to Visual Effect", attended: 0, total: 0 },
-    { id: "2", name: "Media Economics", attended: 0, total: 0 },
-    { id: "3", name: "Entrepreneurship", attended: 0, total: 0 },
-    { id: "4", name: "Marketing Analytics", attended: 0, total: 0 },
-    { id: "5", name: "Introduction to Graphic Design", attended: 0, total: 0 },
-    { id: "6", name: "Retail Management", attended: 0, total: 0 },
-    { id: "7", name: "Market Research - II", attended: 0, total: 0 },
+    { id: "1", name: "Introduction to Visual Effect", attended: 0, total: 0, credits: 2, maxMissable: 6, lecturesPerWeek: 2 },
+    { id: "2", name: "Media Economics", attended: 0, total: 0, credits: 2, maxMissable: 6, lecturesPerWeek: 2 },
+    { id: "3", name: "Entrepreneurship", attended: 0, total: 0, credits: 4, maxMissable: 12, lecturesPerWeek: 4 },
+    { id: "4", name: "Marketing Analytics", attended: 0, total: 0, credits: 4, maxMissable: 12, lecturesPerWeek: 4 },
+    { id: "5", name: "Introduction to Graphic Design", attended: 0, total: 0, credits: 2, maxMissable: 6, lecturesPerWeek: 2 },
+    { id: "6", name: "Retail Management", attended: 0, total: 0, credits: 4, maxMissable: 12, lecturesPerWeek: 4 },
+    { id: "7", name: "Market Research - II", attended: 0, total: 0, credits: 2, maxMissable: 6, lecturesPerWeek: 2 },
   ]);
 
   interface TimetableSlot {
