@@ -125,16 +125,10 @@ const Tracker = () => {
         {/* Today's Timetable Section */}
         <Card className="shadow-elegant border-primary/20">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <CardTitle>Today's Schedule - {currentDay}</CardTitle>
-              </div>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Edit Timetable
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <CardTitle>Today's Schedule - {currentDay}</CardTitle>
+          </div>
           </CardHeader>
           <CardContent>
             {timetable[currentDay] && Object.keys(timetable[currentDay]).length > 0 ? (
