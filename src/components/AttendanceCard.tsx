@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 interface AttendanceCardProps {
   subject: string;
   attended: number;
-  total: number;
+  conducted: number;
+  credits: number;
   onMarkPresent: () => void;
   onMarkAbsent: () => void;
 }
@@ -15,11 +16,13 @@ interface AttendanceCardProps {
 const AttendanceCard = ({
   subject,
   attended,
-  total,
+  conducted,
+  credits,
   onMarkPresent,
   onMarkAbsent,
 }: AttendanceCardProps) => {
-  const percentage = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const totalClasses = credits * 15; // Total classes in semester based on credits
+  const percentage = conducted > 0 ? Math.round((attended / conducted) * 100) : 0;
   const isLow = percentage < 80;
   const isWarning = percentage >= 80 && percentage < 90;
 
@@ -35,12 +38,12 @@ const AttendanceCard = ({
                 <p className="text-muted-foreground text-xs">Attended</p>
               </div>
               <div className="text-center">
-                <p className="font-semibold text-accent">{total - attended}</p>
+                <p className="font-semibold text-accent">{conducted - attended}</p>
                 <p className="text-muted-foreground text-xs">Missed</p>
               </div>
               <div className="text-center">
-                <p className="font-semibold text-primary">{total}</p>
-                <p className="text-muted-foreground text-xs">Conducted</p>
+                <p className="font-semibold text-primary">{totalClasses}</p>
+                <p className="text-muted-foreground text-xs">Total</p>
               </div>
             </div>
           </div>

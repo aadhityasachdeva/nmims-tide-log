@@ -12,6 +12,7 @@ interface Subject {
   name: string;
   attended: number;
   total: number;
+  credits: number;
 }
 
 const Index = () => {
@@ -22,11 +23,11 @@ const Index = () => {
   } | null>(null);
 
   const [subjects, setSubjects] = useState<Subject[]>([
-    { id: "1", name: "Business Statistics", attended: 18, total: 22 },
-    { id: "2", name: "Financial Accounting", attended: 20, total: 24 },
-    { id: "3", name: "Marketing Management", attended: 15, total: 20 },
-    { id: "4", name: "Business Economics", attended: 19, total: 23 },
-    { id: "5", name: "Organizational Behaviour", attended: 21, total: 25 },
+    { id: "1", name: "Business Statistics", attended: 18, total: 22, credits: 4 },
+    { id: "2", name: "Financial Accounting", attended: 20, total: 24, credits: 4 },
+    { id: "3", name: "Marketing Management", attended: 15, total: 20, credits: 4 },
+    { id: "4", name: "Business Economics", attended: 19, total: 23, credits: 4 },
+    { id: "5", name: "Organizational Behaviour", attended: 21, total: 25, credits: 2 },
   ]);
 
   const markAttendance = (subjectId: string, isPresent: boolean) => {
@@ -88,7 +89,8 @@ const Index = () => {
               key={subject.id}
               subject={subject.name}
               attended={subject.attended}
-              total={subject.total}
+              conducted={subject.total}
+              credits={subject.credits}
               onMarkPresent={() => markAttendance(subject.id, true)}
               onMarkAbsent={() => markAttendance(subject.id, false)}
             />
