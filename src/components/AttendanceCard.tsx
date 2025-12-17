@@ -29,9 +29,20 @@ const AttendanceCard = ({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="font-semibold text-lg text-foreground">{subject}</h3>
-            <p className="text-sm text-muted-foreground">
-              {attended} / {total} classes
-            </p>
+            <div className="flex gap-4 mt-2 text-sm">
+              <div className="text-center">
+                <p className="font-semibold text-success">{attended}</p>
+                <p className="text-muted-foreground text-xs">Attended</p>
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-accent">{total - attended}</p>
+                <p className="text-muted-foreground text-xs">Missed</p>
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-primary">{total}</p>
+                <p className="text-muted-foreground text-xs">Conducted</p>
+              </div>
+            </div>
           </div>
           <div
             className={cn(
