@@ -9,7 +9,7 @@ const Header = () => {
           <div className="flex items-center gap-3">
             <GraduationCap className="h-8 w-8" />
             <div>
-              <h1 className="text-2xl font-bold">NMIMS Attendance Tracker</h1>
+              <h1 className="text-2xl font-bold">NMIMS SoBA Attendance Tracker</h1>
               <div className="flex items-center gap-2 text-sm opacity-90">
                 <span>Powered by</span>
                 <img src={askitLogo} alt="Askit" className="h-5 rounded" />
