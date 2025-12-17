@@ -166,7 +166,8 @@ const Tracker = () => {
               key={subject.id}
               subject={subject.name}
               attended={subject.attended}
-              total={subject.total}
+              conducted={subject.total}
+              credits={subject.credits}
               onMarkPresent={() => markAttendance(subject.id, true)}
               onMarkAbsent={() => markAttendance(subject.id, false)}
             />
