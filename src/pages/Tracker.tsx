@@ -3,17 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import Header from "@/components/Header";
 import StatsOverview from "@/components/StatsOverview";
-import AttendanceCard from "@/components/AttendanceCard";
+import { AppSidebar } from "@/components/AppSidebar";
+import { CurrentRecordDialog } from "@/components/CurrentRecordDialog";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
 interface Subject {
   id: string;
   name: string;
@@ -97,6 +97,7 @@ const Tracker = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
 
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const selectedDayName = days[selectedDate.getDay()];
@@ -359,158 +360,176 @@ const Tracker = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onSignOut={signOut} />
-      
-      <main className="container mx-auto px-4 py-8 space-y-6 animate-fade-in">
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-foreground">{profile.name}</h2>
-          <p className="text-muted-foreground">SAP ID: {profile.sap_id} | Division: {profile.division}</p>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar onSignOut={signOut} onOpenRecord={() => setRecordDialogOpen(true)} />
+        
+        <div className="flex-1 flex flex-col">
+          {/* Header with sidebar trigger */}
+          <header className="h-14 flex items-center border-b border-border px-4 gap-4">
+            <SidebarTrigger>
+              <Menu className="h-5 w-5" />
+            </SidebarTrigger>
+            <h1 className="font-bold text-lg text-foreground">Attendance Tracker</h1>
+          </header>
+
+          <main className="flex-1 container mx-auto px-4 py-6 space-y-6 animate-fade-in">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-foreground">{profile.name}</h2>
+              <p className="text-muted-foreground">SAP ID: {profile.sap_id} | Division: {profile.division}</p>
+            </div>
+
+            <StatsOverview
+              overallPercentage={overallPercentage}
+              totalClasses={totalClasses}
+              attendedClasses={attendedClasses}
+            />
+
+            {/* Date Navigation */}
+            <Card className="bg-card border-primary/20">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={goToPreviousDay}
+                    className="h-10 w-10"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </Button>
+                  
+                  <div className="flex flex-col items-center gap-1">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" className="text-lg font-semibold gap-2">
+                          <CalendarIcon className="h-5 w-5 text-primary" />
+                          {format(selectedDate, "EEE, MMM d")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="center">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => date && setSelectedDate(date)}
+                          disabled={(date) => date > new Date()}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    {isToday ? (
+                      <span className="text-xs text-primary font-medium">Today</span>
+                    ) : (
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        onClick={goToToday}
+                        className="text-xs h-auto p-0 text-muted-foreground hover:text-primary"
+                      >
+                        Go to Today
+                      </Button>
+                    )}
+                  </div>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={goToNextDay}
+                    disabled={isToday}
+                    className="h-10 w-10"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Schedule & Attendance */}
+            <Card className="bg-card border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{selectedDayName}'s Classes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isWeekend ? (
+                  <p className="text-muted-foreground text-center py-8">No classes on weekends</p>
+                ) : todaysSchedule.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No classes scheduled</p>
+                ) : (
+                  <div className="space-y-3">
+                    {todaysSchedule.map((slot) => {
+                      const status = getAttendanceStatus(slot.subjectId);
+                      const percentage = slot.total > 0 ? Math.round((slot.attended / slot.total) * 100) : 0;
+                      
+                      return (
+                        <div
+                          key={`${slot.time}-${slot.subject}`}
+                          className={cn(
+                            "p-4 rounded-lg border transition-all",
+                            status === "present" && "bg-success/10 border-success/30",
+                            status === "absent" && "bg-accent/10 border-accent/30",
+                            !status && "bg-secondary/50 border-border"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                  {slot.time}
+                                </span>
+                                <span className="text-xs text-muted-foreground">Room {slot.room}</span>
+                              </div>
+                              <h3 className="font-semibold text-foreground truncate">{slot.subject}</h3>
+                              <p className="text-sm text-muted-foreground">{slot.professor}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {slot.attended}/{slot.total} classes • {percentage}%
+                              </p>
+                            </div>
+                            
+                            <div className="flex gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                onClick={() => slot.subjectId && markAttendance(slot.subjectId, true)}
+                                className={cn(
+                                  "h-9 px-3",
+                                  status === "present" 
+                                    ? "bg-success text-white" 
+                                    : "bg-success/20 text-success hover:bg-success hover:text-white"
+                                )}
+                              >
+                                Present
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => slot.subjectId && markAttendance(slot.subjectId, false)}
+                                className={cn(
+                                  "h-9 px-3",
+                                  status === "absent"
+                                    ? "bg-accent text-accent-foreground border-accent"
+                                    : "border-accent/50 text-accent hover:bg-accent hover:text-accent-foreground"
+                                )}
+                              >
+                                Absent
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </main>
         </div>
 
-        <StatsOverview
-          overallPercentage={overallPercentage}
-          totalClasses={totalClasses}
-          attendedClasses={attendedClasses}
+        <CurrentRecordDialog
+          open={recordDialogOpen}
+          onOpenChange={setRecordDialogOpen}
+          subjects={subjects}
         />
-
-        {/* Date Navigation */}
-        <Card className="bg-card border-primary/20">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={goToPreviousDay}
-                className="h-10 w-10"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-              
-              <div className="flex flex-col items-center gap-1">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" className="text-lg font-semibold gap-2">
-                      <CalendarIcon className="h-5 w-5 text-primary" />
-                      {format(selectedDate, "EEE, MMM d")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="center">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(date) => date && setSelectedDate(date)}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                {isToday ? (
-                  <span className="text-xs text-primary font-medium">Today</span>
-                ) : (
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    onClick={goToToday}
-                    className="text-xs h-auto p-0 text-muted-foreground hover:text-primary"
-                  >
-                    Go to Today
-                  </Button>
-                )}
-              </div>
-
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={goToNextDay}
-                disabled={isToday}
-                className="h-10 w-10"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Schedule & Attendance */}
-        <Card className="bg-card border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">{selectedDayName}'s Classes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isWeekend ? (
-              <p className="text-muted-foreground text-center py-8">No classes on weekends</p>
-            ) : todaysSchedule.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No classes scheduled</p>
-            ) : (
-              <div className="space-y-3">
-                {todaysSchedule.map((slot) => {
-                  const status = getAttendanceStatus(slot.subjectId);
-                  const percentage = slot.total > 0 ? Math.round((slot.attended / slot.total) * 100) : 0;
-                  
-                  return (
-                    <div
-                      key={`${slot.time}-${slot.subject}`}
-                      className={cn(
-                        "p-4 rounded-lg border transition-all",
-                        status === "present" && "bg-success/10 border-success/30",
-                        status === "absent" && "bg-accent/10 border-accent/30",
-                        !status && "bg-secondary/50 border-border"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
-                              {slot.time}
-                            </span>
-                            <span className="text-xs text-muted-foreground">Room {slot.room}</span>
-                          </div>
-                          <h3 className="font-semibold text-foreground truncate">{slot.subject}</h3>
-                          <p className="text-sm text-muted-foreground">{slot.professor}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {slot.attended}/{slot.total} classes • {percentage}%
-                          </p>
-                        </div>
-                        
-                        <div className="flex gap-2 shrink-0">
-                          <Button
-                            size="sm"
-                            onClick={() => slot.subjectId && markAttendance(slot.subjectId, true)}
-                            className={cn(
-                              "h-9 px-3",
-                              status === "present" 
-                                ? "bg-success text-white" 
-                                : "bg-success/20 text-success hover:bg-success hover:text-white"
-                            )}
-                          >
-                            Present
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => slot.subjectId && markAttendance(slot.subjectId, false)}
-                            className={cn(
-                              "h-9 px-3",
-                              status === "absent"
-                                ? "bg-accent text-accent-foreground border-accent"
-                                : "border-accent/50 text-accent hover:bg-accent hover:text-accent-foreground"
-                            )}
-                          >
-                            Absent
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
