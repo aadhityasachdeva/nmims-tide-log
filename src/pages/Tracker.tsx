@@ -43,6 +43,7 @@ interface AttendanceRecord {
   subject_id: string;
   status: string;
   date: string;
+  time_slot: string;
 }
 
 const TIMETABLE: TimetableData = {
@@ -125,11 +126,11 @@ const Tracker = () => {
 
   const todaysSchedule = getTodaysSchedule();
 
-  // Get attendance status for a subject on the selected date
-  const getAttendanceStatus = (subjectId: string | undefined): string | null => {
+  // Get attendance status for a subject on the selected date and time slot
+  const getAttendanceStatus = (subjectId: string | undefined, timeSlot: string): string | null => {
     if (!subjectId) return null;
     const record = attendanceRecords.find(
-      r => r.subject_id === subjectId && r.date === selectedDateStr
+      r => r.subject_id === subjectId && r.date === selectedDateStr && r.time_slot === timeSlot
     );
     return record?.status || null;
   };
@@ -248,7 +249,7 @@ const Tracker = () => {
 
     const { data, error } = await supabase
       .from("attendance_records")
-      .select("subject_id, status, date")
+      .select("subject_id, status, date, time_slot")
       .eq("user_id", user.id);
 
     if (error) {
@@ -259,10 +260,10 @@ const Tracker = () => {
     setAttendanceRecords(data || []);
   };
 
-  const markAttendance = async (subjectId: string, isPresent: boolean) => {
+  const markAttendance = async (subjectId: string, timeSlot: string, isPresent: boolean) => {
     if (!user || !subjectId) return;
 
-    const existingStatus = getAttendanceStatus(subjectId);
+    const existingStatus = getAttendanceStatus(subjectId, timeSlot);
 
     try {
       const { error } = await supabase
@@ -271,17 +272,18 @@ const Tracker = () => {
           user_id: user.id,
           subject_id: subjectId,
           date: selectedDateStr,
+          time_slot: timeSlot,
           status: isPresent ? "present" : "absent",
         }, {
-          onConflict: "subject_id,date"
+          onConflict: "subject_id,date,time_slot"
         });
 
       if (error) throw error;
 
       // Update local attendance records
       setAttendanceRecords(prev => {
-        const filtered = prev.filter(r => !(r.subject_id === subjectId && r.date === selectedDateStr));
-        return [...filtered, { subject_id: subjectId, status: isPresent ? "present" : "absent", date: selectedDateStr }];
+        const filtered = prev.filter(r => !(r.subject_id === subjectId && r.date === selectedDateStr && r.time_slot === timeSlot));
+        return [...filtered, { subject_id: subjectId, status: isPresent ? "present" : "absent", date: selectedDateStr, time_slot: timeSlot }];
       });
 
       // Update subject counts
@@ -457,7 +459,7 @@ const Tracker = () => {
                 ) : (
                   <div className="space-y-3">
                     {todaysSchedule.map((slot) => {
-                      const status = getAttendanceStatus(slot.subjectId);
+                      const status = getAttendanceStatus(slot.subjectId, slot.time);
                       const percentage = slot.total > 0 ? Math.round((slot.attended / slot.total) * 100) : 0;
                       
                       return (
@@ -488,7 +490,7 @@ const Tracker = () => {
                             <div className="flex gap-2 shrink-0">
                               <Button
                                 size="sm"
-                                onClick={() => slot.subjectId && markAttendance(slot.subjectId, true)}
+                                onClick={() => slot.subjectId && markAttendance(slot.subjectId, slot.time, true)}
                                 className={cn(
                                   "h-9 px-3",
                                   status === "present" 
@@ -501,7 +503,7 @@ const Tracker = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => slot.subjectId && markAttendance(slot.subjectId, false)}
+                                onClick={() => slot.subjectId && markAttendance(slot.subjectId, slot.time, false)}
                                 className={cn(
                                   "h-9 px-3",
                                   status === "absent"
