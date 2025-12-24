@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/Header";
@@ -10,8 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Calendar, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Plus, Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Subject {
   id: string;
@@ -39,15 +43,23 @@ interface TimetableData {
   };
 }
 
+interface AttendanceRecord {
+  subject_id: string;
+  status: string;
+  date: string;
+}
+
 const Tracker = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [addingSubject, setAddingSubject] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const [timetable] = useState<TimetableData>({
     Monday: {
@@ -82,6 +94,35 @@ const Tracker = () => {
     },
   });
 
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const selectedDayName = days[selectedDate.getDay()];
+  const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
+  const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6;
+
+  // Get unique subjects for the selected day
+  const getTodaysSubjects = () => {
+    if (isWeekend) return [];
+    const daySchedule = timetable[selectedDayName];
+    if (!daySchedule) return [];
+    
+    const subjectNames = new Set<string>();
+    Object.values(daySchedule).forEach(slot => {
+      subjectNames.add(slot.subject);
+    });
+    
+    return subjects.filter(s => subjectNames.has(s.name));
+  };
+
+  const todaysSubjects = getTodaysSubjects();
+
+  // Get attendance status for a subject on the selected date
+  const getAttendanceStatus = (subjectId: string): string | null => {
+    const record = attendanceRecords.find(
+      r => r.subject_id === subjectId && r.date === selectedDateStr
+    );
+    return record?.status || null;
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -94,6 +135,12 @@ const Tracker = () => {
       fetchSubjectsWithAttendance();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchAttendanceForDate();
+    }
+  }, [user, selectedDate]);
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -115,6 +162,22 @@ const Tracker = () => {
     }
 
     setProfile(data);
+  };
+
+  const fetchAttendanceForDate = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("attendance_records")
+      .select("subject_id, status, date")
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Error fetching attendance:", error);
+      return;
+    }
+
+    setAttendanceRecords(data || []);
   };
 
   const fetchSubjectsWithAttendance = async () => {
@@ -195,7 +258,7 @@ const Tracker = () => {
   const markAttendance = async (subjectId: string, isPresent: boolean) => {
     if (!user) return;
 
-    const today = new Date().toISOString().split("T")[0];
+    const existingStatus = getAttendanceStatus(subjectId);
 
     try {
       const { error } = await supabase
@@ -203,7 +266,7 @@ const Tracker = () => {
         .upsert({
           user_id: user.id,
           subject_id: subjectId,
-          date: today,
+          date: selectedDateStr,
           status: isPresent ? "present" : "absent",
         }, {
           onConflict: "subject_id,date"
@@ -211,36 +274,63 @@ const Tracker = () => {
 
       if (error) throw error;
 
-      setSubjects((prev) =>
-        prev.map((subject) =>
-          subject.id === subjectId
-            ? {
-                ...subject,
-                attended: isPresent ? subject.attended + 1 : subject.attended,
-                total: subject.total + 1,
-              }
-            : subject
-        )
-      );
+      // Update local attendance records
+      setAttendanceRecords(prev => {
+        const filtered = prev.filter(r => !(r.subject_id === subjectId && r.date === selectedDateStr));
+        return [...filtered, { subject_id: subjectId, status: isPresent ? "present" : "absent", date: selectedDateStr }];
+      });
+
+      // Update subject counts only if this is a new record
+      if (!existingStatus) {
+        setSubjects((prev) =>
+          prev.map((subject) =>
+            subject.id === subjectId
+              ? {
+                  ...subject,
+                  attended: isPresent ? subject.attended + 1 : subject.attended,
+                  total: subject.total + 1,
+                }
+              : subject
+          )
+        );
+      } else if (existingStatus !== (isPresent ? "present" : "absent")) {
+        // Status changed, update attended count
+        setSubjects((prev) =>
+          prev.map((subject) =>
+            subject.id === subjectId
+              ? {
+                  ...subject,
+                  attended: isPresent ? subject.attended + 1 : subject.attended - 1,
+                }
+              : subject
+          )
+        );
+      }
 
       toast({
         title: isPresent ? "Marked Present" : "Marked Absent",
-        description: `Attendance updated successfully.`,
+        description: `Attendance updated for ${format(selectedDate, "MMM d, yyyy")}.`,
       });
     } catch (error: any) {
-      if (error.code === "23505") {
-        toast({
-          title: "Already marked",
-          description: "You've already marked attendance for this subject today.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to mark attendance",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark attendance",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const goToPreviousDay = () => {
+    const prev = new Date(selectedDate);
+    prev.setDate(prev.getDate() - 1);
+    setSelectedDate(prev);
+  };
+
+  const goToNextDay = () => {
+    const next = new Date(selectedDate);
+    next.setDate(next.getDate() + 1);
+    if (next <= new Date()) {
+      setSelectedDate(next);
     }
   };
 
@@ -250,9 +340,7 @@ const Tracker = () => {
     ? Math.round((attendedClasses / totalClasses) * 100) 
     : 0;
 
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  const dayIndex = new Date().getDay();
-  const currentDay = dayIndex >= 1 && dayIndex <= 5 ? days[dayIndex - 1] : "Monday";
+  const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
   if (authLoading || loading) {
     return (
@@ -282,20 +370,66 @@ const Tracker = () => {
           attendedClasses={attendedClasses}
         />
 
+        {/* Date Selector */}
+        <Card className="shadow-elegant border-primary/20 bg-card">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="icon" onClick={goToPreviousDay}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              
+              <div className="flex items-center gap-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="center">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {isToday && (
+                  <span className="text-sm text-primary font-medium">(Today)</span>
+                )}
+              </div>
+
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={goToNextDay}
+                disabled={isToday}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Today's Timetable Section */}
         <Card className="shadow-elegant border-primary/20 bg-card">
           <CardHeader>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <CardTitle>Today's Schedule - {currentDay}</CardTitle>
-          </div>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-primary" />
+              <CardTitle>{selectedDayName}'s Schedule</CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            {timetable[currentDay] && Object.keys(timetable[currentDay]).length > 0 ? (
+            {isWeekend ? (
+              <p className="text-muted-foreground text-center py-8">No classes on weekends</p>
+            ) : timetable[selectedDayName] && Object.keys(timetable[selectedDayName]).length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.entries(timetable[currentDay]).map(([time, slot]) => (
+                {Object.entries(timetable[selectedDayName]).map(([time, slot]) => (
                   <div
-                    key={`${currentDay}-${time}`}
+                    key={`${selectedDayName}-${time}`}
                     className="bg-secondary/50 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all"
                   >
                     <p className="font-bold text-primary text-sm">{time}</p>
@@ -306,14 +440,14 @@ const Tracker = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center py-8">No classes scheduled for today</p>
+              <p className="text-muted-foreground text-center py-8">No classes scheduled</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Subjects Section */}
+        {/* Subjects Section - Only show subjects for this day */}
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-foreground">Your Subjects</h2>
+          <h2 className="text-2xl font-bold text-foreground">Mark Attendance</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90">
@@ -348,25 +482,37 @@ const Tracker = () => {
           </Dialog>
         </div>
 
-        {subjects.length === 0 ? (
+        {isWeekend ? (
           <Card className="bg-card">
             <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">No subjects added yet. Click "Add Subject" to get started.</p>
+              <p className="text-muted-foreground">No classes on weekends. Select a weekday to mark attendance.</p>
+            </CardContent>
+          </Card>
+        ) : todaysSubjects.length === 0 ? (
+          <Card className="bg-card">
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">
+                No matching subjects found. Make sure to add subjects with names matching your timetable.
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subjects.map((subject) => (
-              <AttendanceCard
-                key={subject.id}
-                subject={subject.name}
-                attended={subject.attended}
-                conducted={subject.total}
-                credits={4}
-                onMarkPresent={() => markAttendance(subject.id, true)}
-                onMarkAbsent={() => markAttendance(subject.id, false)}
-              />
-            ))}
+            {todaysSubjects.map((subject) => {
+              const status = getAttendanceStatus(subject.id);
+              return (
+                <AttendanceCard
+                  key={subject.id}
+                  subject={subject.name}
+                  attended={subject.attended}
+                  conducted={subject.total}
+                  credits={4}
+                  onMarkPresent={() => markAttendance(subject.id, true)}
+                  onMarkAbsent={() => markAttendance(subject.id, false)}
+                  markedStatus={status}
+                />
+              );
+            })}
           </div>
         )}
       </main>

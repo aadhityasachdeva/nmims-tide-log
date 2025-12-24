@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AttendanceCardProps {
@@ -11,6 +11,7 @@ interface AttendanceCardProps {
   credits: number;
   onMarkPresent: () => void;
   onMarkAbsent: () => void;
+  markedStatus?: string | null;
 }
 
 const AttendanceCard = ({
@@ -20,6 +21,7 @@ const AttendanceCard = ({
   credits,
   onMarkPresent,
   onMarkAbsent,
+  markedStatus,
 }: AttendanceCardProps) => {
   const totalClasses = credits * 15; // Total classes in semester based on credits
   const percentage = conducted > 0 ? Math.round((attended / conducted) * 100) : 0;
@@ -27,7 +29,7 @@ const AttendanceCard = ({
   const isWarning = percentage >= 80 && percentage < 90;
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow">
+    <Card className="p-6 hover:shadow-lg transition-shadow bg-card">
       <div className="space-y-4">
         <div className="flex justify-between items-start">
           <div>
@@ -76,11 +78,29 @@ const AttendanceCard = ({
           )}
         </div>
 
+        {markedStatus ? (
+          <div className={cn(
+            "flex items-center justify-center gap-2 py-2 px-4 rounded-md font-medium",
+            markedStatus === "present" 
+              ? "bg-success/20 text-success border border-success/30" 
+              : "bg-accent/20 text-accent border border-accent/30"
+          )}>
+            <Check className="h-4 w-4" />
+            Marked {markedStatus === "present" ? "Present" : "Absent"}
+            <span className="text-xs opacity-70">(tap to change)</span>
+          </div>
+        ) : null}
+
         <div className="flex gap-2">
           <Button
             onClick={onMarkPresent}
             size="sm"
-            className="flex-1 bg-success hover:bg-success/90 text-white"
+            className={cn(
+              "flex-1",
+              markedStatus === "present" 
+                ? "bg-success text-white ring-2 ring-success ring-offset-2" 
+                : "bg-success hover:bg-success/90 text-white"
+            )}
           >
             <CheckCircle2 className="h-4 w-4 mr-1" />
             Present
@@ -89,7 +109,12 @@ const AttendanceCard = ({
             onClick={onMarkAbsent}
             size="sm"
             variant="outline"
-            className="flex-1 border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+            className={cn(
+              "flex-1",
+              markedStatus === "absent"
+                ? "bg-accent text-accent-foreground ring-2 ring-accent ring-offset-2"
+                : "border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+            )}
           >
             <XCircle className="h-4 w-4 mr-1" />
             Absent
