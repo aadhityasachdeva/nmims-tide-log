@@ -8,12 +8,9 @@ import StatsOverview from "@/components/StatsOverview";
 import AttendanceCard from "@/components/AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +19,6 @@ interface Subject {
   name: string;
   attended: number;
   total: number;
-  required_percentage: number;
 }
 
 interface Profile {
@@ -49,6 +45,50 @@ interface AttendanceRecord {
   date: string;
 }
 
+const TIMETABLE: TimetableData = {
+  Monday: {
+    "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
+    "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
+    "9:45 - 10:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
+  },
+  Tuesday: {
+    "7:00 - 8:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
+    "8:00 - 9:00": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
+    "9:45 - 10:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+    "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+    "11:45 - 12:45": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
+  },
+  Wednesday: {
+    "7:00 - 8:00": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+    "8:00 - 9:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+    "9:45 - 10:45": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
+    "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+  },
+  Thursday: {
+    "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "10:45 - 11:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+    "11:45 - 12:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+  },
+  Friday: {
+    "7:00 - 8:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+    "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "10:45 - 11:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
+  },
+};
+
+// Get all unique subject names from timetable
+const getAllSubjectNames = (): string[] => {
+  const names = new Set<string>();
+  Object.values(TIMETABLE).forEach(day => {
+    Object.values(day).forEach(slot => {
+      names.add(slot.subject);
+    });
+  });
+  return Array.from(names);
+};
+
 const Tracker = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -56,67 +96,37 @@ const Tracker = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newSubjectName, setNewSubjectName] = useState("");
-  const [addingSubject, setAddingSubject] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-  const [timetable] = useState<TimetableData>({
-    Monday: {
-      "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
-      "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
-      "9:45 - 10:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
-    },
-    Tuesday: {
-      "7:00 - 8:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
-      "8:00 - 9:00": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
-      "9:45 - 10:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
-      "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
-      "11:45 - 12:45": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
-    },
-    Wednesday: {
-      "7:00 - 8:00": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
-      "8:00 - 9:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
-      "9:45 - 10:45": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
-      "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
-    },
-    Thursday: {
-      "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
-      "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
-      "10:45 - 11:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
-      "11:45 - 12:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
-    },
-    Friday: {
-      "7:00 - 8:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
-      "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
-      "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
-      "10:45 - 11:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
-    },
-  });
 
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const selectedDayName = days[selectedDate.getDay()];
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
   const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6;
+  const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
-  // Get unique subjects for the selected day
-  const getTodaysSubjects = () => {
+  // Get today's schedule with subjects
+  const getTodaysSchedule = () => {
     if (isWeekend) return [];
-    const daySchedule = timetable[selectedDayName];
+    const daySchedule = TIMETABLE[selectedDayName];
     if (!daySchedule) return [];
     
-    const subjectNames = new Set<string>();
-    Object.values(daySchedule).forEach(slot => {
-      subjectNames.add(slot.subject);
+    return Object.entries(daySchedule).map(([time, slot]) => {
+      const subject = subjects.find(s => s.name === slot.subject);
+      return {
+        time,
+        ...slot,
+        subjectId: subject?.id,
+        attended: subject?.attended || 0,
+        total: subject?.total || 0,
+      };
     });
-    
-    return subjects.filter(s => subjectNames.has(s.name));
   };
 
-  const todaysSubjects = getTodaysSubjects();
+  const todaysSchedule = getTodaysSchedule();
 
   // Get attendance status for a subject on the selected date
-  const getAttendanceStatus = (subjectId: string): string | null => {
+  const getAttendanceStatus = (subjectId: string | undefined): string | null => {
+    if (!subjectId) return null;
     const record = attendanceRecords.find(
       r => r.subject_id === subjectId && r.date === selectedDateStr
     );
@@ -132,15 +142,15 @@ const Tracker = () => {
   useEffect(() => {
     if (user) {
       fetchProfile();
-      fetchSubjectsWithAttendance();
+      initializeSubjects();
     }
   }, [user]);
 
   useEffect(() => {
-    if (user) {
-      fetchAttendanceForDate();
+    if (user && subjects.length > 0) {
+      fetchAllAttendance();
     }
-  }, [user, selectedDate]);
+  }, [user, subjects.length]);
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -164,7 +174,75 @@ const Tracker = () => {
     setProfile(data);
   };
 
-  const fetchAttendanceForDate = async () => {
+  const initializeSubjects = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch existing subjects
+      const { data: existingSubjects, error: fetchError } = await supabase
+        .from("subjects")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (fetchError) throw fetchError;
+
+      const allSubjectNames = getAllSubjectNames();
+      const existingNames = new Set(existingSubjects?.map(s => s.name) || []);
+      
+      // Create missing subjects
+      const missingSubjects = allSubjectNames.filter(name => !existingNames.has(name));
+      
+      if (missingSubjects.length > 0) {
+        const { data: newSubjects, error: insertError } = await supabase
+          .from("subjects")
+          .insert(missingSubjects.map(name => ({ user_id: user.id, name })))
+          .select();
+
+        if (insertError) throw insertError;
+
+        const allSubjects = [...(existingSubjects || []), ...(newSubjects || [])];
+        await fetchSubjectsWithCounts(allSubjects);
+      } else {
+        await fetchSubjectsWithCounts(existingSubjects || []);
+      }
+    } catch (error) {
+      console.error("Error initializing subjects:", error);
+      setLoading(false);
+    }
+  };
+
+  const fetchSubjectsWithCounts = async (subjectsData: any[]) => {
+    try {
+      const subjectsWithCounts = await Promise.all(
+        subjectsData.map(async (subject) => {
+          const { data: attendanceData, error } = await supabase
+            .from("attendance_records")
+            .select("status")
+            .eq("subject_id", subject.id);
+
+          if (error) throw error;
+
+          const total = attendanceData?.length || 0;
+          const attended = attendanceData?.filter(r => r.status === "present").length || 0;
+
+          return {
+            id: subject.id,
+            name: subject.name,
+            attended,
+            total,
+          };
+        })
+      );
+
+      setSubjects(subjectsWithCounts);
+    } catch (error) {
+      console.error("Error fetching subject counts:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllAttendance = async () => {
     if (!user) return;
 
     const { data, error } = await supabase
@@ -180,83 +258,8 @@ const Tracker = () => {
     setAttendanceRecords(data || []);
   };
 
-  const fetchSubjectsWithAttendance = async () => {
-    if (!user) return;
-
-    try {
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from("subjects")
-        .select("*")
-        .eq("user_id", user.id);
-
-      if (subjectsError) throw subjectsError;
-
-      const subjectsWithCounts = await Promise.all(
-        (subjectsData || []).map(async (subject) => {
-          const { data: attendanceData, error: attendanceError } = await supabase
-            .from("attendance_records")
-            .select("status")
-            .eq("subject_id", subject.id);
-
-          if (attendanceError) throw attendanceError;
-
-          const total = attendanceData?.length || 0;
-          const attended = attendanceData?.filter(r => r.status === "present").length || 0;
-
-          return {
-            id: subject.id,
-            name: subject.name,
-            required_percentage: subject.required_percentage,
-            attended,
-            total,
-          };
-        })
-      );
-
-      setSubjects(subjectsWithCounts);
-    } catch (error) {
-      console.error("Error fetching subjects:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addSubject = async () => {
-    if (!user || !newSubjectName.trim()) return;
-
-    setAddingSubject(true);
-    try {
-      const { data, error } = await supabase
-        .from("subjects")
-        .insert({
-          user_id: user.id,
-          name: newSubjectName.trim(),
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setSubjects([...subjects, { id: data.id, name: data.name, required_percentage: data.required_percentage, attended: 0, total: 0 }]);
-      setNewSubjectName("");
-      setDialogOpen(false);
-      toast({
-        title: "Subject added",
-        description: `${data.name} has been added to your subjects.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add subject",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingSubject(false);
-    }
-  };
-
   const markAttendance = async (subjectId: string, isPresent: boolean) => {
-    if (!user) return;
+    if (!user || !subjectId) return;
 
     const existingStatus = getAttendanceStatus(subjectId);
 
@@ -280,7 +283,7 @@ const Tracker = () => {
         return [...filtered, { subject_id: subjectId, status: isPresent ? "present" : "absent", date: selectedDateStr }];
       });
 
-      // Update subject counts only if this is a new record
+      // Update subject counts
       if (!existingStatus) {
         setSubjects((prev) =>
           prev.map((subject) =>
@@ -294,7 +297,6 @@ const Tracker = () => {
           )
         );
       } else if (existingStatus !== (isPresent ? "present" : "absent")) {
-        // Status changed, update attended count
         setSubjects((prev) =>
           prev.map((subject) =>
             subject.id === subjectId
@@ -309,7 +311,7 @@ const Tracker = () => {
 
       toast({
         title: isPresent ? "Marked Present" : "Marked Absent",
-        description: `Attendance updated for ${format(selectedDate, "MMM d, yyyy")}.`,
+        description: `Attendance updated for ${format(selectedDate, "MMM d")}.`,
       });
     } catch (error: any) {
       toast({
@@ -334,13 +336,15 @@ const Tracker = () => {
     }
   };
 
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
   const totalClasses = subjects.reduce((sum, subject) => sum + subject.total, 0);
   const attendedClasses = subjects.reduce((sum, subject) => sum + subject.attended, 0);
   const overallPercentage = totalClasses > 0 
     ? Math.round((attendedClasses / totalClasses) * 100) 
     : 0;
-
-  const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
   if (authLoading || loading) {
     return (
@@ -358,8 +362,8 @@ const Tracker = () => {
     <div className="min-h-screen bg-background">
       <Header onSignOut={signOut} />
       
-      <main className="container mx-auto px-4 py-8 space-y-8 animate-fade-in">
-        <div className="mb-6">
+      <main className="container mx-auto px-4 py-8 space-y-6 animate-fade-in">
+        <div className="mb-4">
           <h2 className="text-2xl font-bold text-foreground">{profile.name}</h2>
           <p className="text-muted-foreground">SAP ID: {profile.sap_id} | Division: {profile.division}</p>
         </div>
@@ -370,20 +374,25 @@ const Tracker = () => {
           attendedClasses={attendedClasses}
         />
 
-        {/* Date Selector */}
-        <Card className="shadow-elegant border-primary/20 bg-card">
+        {/* Date Navigation */}
+        <Card className="bg-card border-primary/20">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={goToPreviousDay}>
-                <ChevronLeft className="h-5 w-5" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={goToPreviousDay}
+                className="h-10 w-10"
+              >
+                <ChevronLeft className="h-6 w-6" />
               </Button>
               
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-center gap-1">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                    <Button variant="ghost" className="text-lg font-semibold gap-2">
+                      <CalendarIcon className="h-5 w-5 text-primary" />
+                      {format(selectedDate, "EEE, MMM d")}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="center">
@@ -397,8 +406,17 @@ const Tracker = () => {
                     />
                   </PopoverContent>
                 </Popover>
-                {isToday && (
-                  <span className="text-sm text-primary font-medium">(Today)</span>
+                {isToday ? (
+                  <span className="text-xs text-primary font-medium">Today</span>
+                ) : (
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    onClick={goToToday}
+                    className="text-xs h-auto p-0 text-muted-foreground hover:text-primary"
+                  >
+                    Go to Today
+                  </Button>
                 )}
               </div>
 
@@ -407,114 +425,90 @@ const Tracker = () => {
                 size="icon" 
                 onClick={goToNextDay}
                 disabled={isToday}
+                className="h-10 w-10"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-6 w-6" />
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Today's Timetable Section */}
-        <Card className="shadow-elegant border-primary/20 bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-primary" />
-              <CardTitle>{selectedDayName}'s Schedule</CardTitle>
-            </div>
+        {/* Schedule & Attendance */}
+        <Card className="bg-card border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">{selectedDayName}'s Classes</CardTitle>
           </CardHeader>
           <CardContent>
             {isWeekend ? (
               <p className="text-muted-foreground text-center py-8">No classes on weekends</p>
-            ) : timetable[selectedDayName] && Object.keys(timetable[selectedDayName]).length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.entries(timetable[selectedDayName]).map(([time, slot]) => (
-                  <div
-                    key={`${selectedDayName}-${time}`}
-                    className="bg-secondary/50 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all"
-                  >
-                    <p className="font-bold text-primary text-sm">{time}</p>
-                    <p className="text-foreground font-semibold mt-2">{slot.subject}</p>
-                    <p className="text-muted-foreground text-sm mt-1">{slot.professor}</p>
-                    <p className="text-muted-foreground text-xs mt-1">Room: {slot.room}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
+            ) : todaysSchedule.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No classes scheduled</p>
+            ) : (
+              <div className="space-y-3">
+                {todaysSchedule.map((slot) => {
+                  const status = getAttendanceStatus(slot.subjectId);
+                  const percentage = slot.total > 0 ? Math.round((slot.attended / slot.total) * 100) : 0;
+                  
+                  return (
+                    <div
+                      key={`${slot.time}-${slot.subject}`}
+                      className={cn(
+                        "p-4 rounded-lg border transition-all",
+                        status === "present" && "bg-success/10 border-success/30",
+                        status === "absent" && "bg-accent/10 border-accent/30",
+                        !status && "bg-secondary/50 border-border"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
+                              {slot.time}
+                            </span>
+                            <span className="text-xs text-muted-foreground">Room {slot.room}</span>
+                          </div>
+                          <h3 className="font-semibold text-foreground truncate">{slot.subject}</h3>
+                          <p className="text-sm text-muted-foreground">{slot.professor}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {slot.attended}/{slot.total} classes • {percentage}%
+                          </p>
+                        </div>
+                        
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => slot.subjectId && markAttendance(slot.subjectId, true)}
+                            className={cn(
+                              "h-9 px-3",
+                              status === "present" 
+                                ? "bg-success text-white" 
+                                : "bg-success/20 text-success hover:bg-success hover:text-white"
+                            )}
+                          >
+                            Present
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => slot.subjectId && markAttendance(slot.subjectId, false)}
+                            className={cn(
+                              "h-9 px-3",
+                              status === "absent"
+                                ? "bg-accent text-accent-foreground border-accent"
+                                : "border-accent/50 text-accent hover:bg-accent hover:text-accent-foreground"
+                            )}
+                          >
+                            Absent
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Subjects Section - Only show subjects for this day */}
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-foreground">Mark Attendance</h2>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Subject
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card">
-              <DialogHeader>
-                <DialogTitle>Add New Subject</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="subjectName">Subject Name</Label>
-                  <Input
-                    id="subjectName"
-                    placeholder="Enter subject name"
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                  />
-                </div>
-                <Button 
-                  onClick={addSubject} 
-                  disabled={addingSubject || !newSubjectName.trim()}
-                  className="w-full"
-                >
-                  {addingSubject && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add Subject
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {isWeekend ? (
-          <Card className="bg-card">
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">No classes on weekends. Select a weekday to mark attendance.</p>
-            </CardContent>
-          </Card>
-        ) : todaysSubjects.length === 0 ? (
-          <Card className="bg-card">
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">
-                No matching subjects found. Make sure to add subjects with names matching your timetable.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {todaysSubjects.map((subject) => {
-              const status = getAttendanceStatus(subject.id);
-              return (
-                <AttendanceCard
-                  key={subject.id}
-                  subject={subject.name}
-                  attended={subject.attended}
-                  conducted={subject.total}
-                  credits={4}
-                  onMarkPresent={() => markAttendance(subject.id, true)}
-                  onMarkAbsent={() => markAttendance(subject.id, false)}
-                  markedStatus={status}
-                />
-              );
-            })}
-          </div>
-        )}
       </main>
     </div>
   );
