@@ -180,33 +180,24 @@ const Tracker = () => {
     if (!user) return;
 
     try {
-      // Fetch existing subjects
-      const { data: existingSubjects, error: fetchError } = await supabase
+      const allSubjectNames = getAllSubjectNames();
+      
+      // Upsert all subjects (insert if not exists, ignore if exists)
+      for (const name of allSubjectNames) {
+        await supabase
+          .from("subjects")
+          .upsert({ user_id: user.id, name }, { onConflict: "user_id,name", ignoreDuplicates: true });
+      }
+
+      // Fetch all subjects for this user
+      const { data: subjects, error: fetchError } = await supabase
         .from("subjects")
         .select("*")
         .eq("user_id", user.id);
 
       if (fetchError) throw fetchError;
 
-      const allSubjectNames = getAllSubjectNames();
-      const existingNames = new Set(existingSubjects?.map(s => s.name) || []);
-      
-      // Create missing subjects
-      const missingSubjects = allSubjectNames.filter(name => !existingNames.has(name));
-      
-      if (missingSubjects.length > 0) {
-        const { data: newSubjects, error: insertError } = await supabase
-          .from("subjects")
-          .insert(missingSubjects.map(name => ({ user_id: user.id, name })))
-          .select();
-
-        if (insertError) throw insertError;
-
-        const allSubjects = [...(existingSubjects || []), ...(newSubjects || [])];
-        await fetchSubjectsWithCounts(allSubjects);
-      } else {
-        await fetchSubjectsWithCounts(existingSubjects || []);
-      }
+      await fetchSubjectsWithCounts(subjects || []);
     } catch (error) {
       console.error("Error initializing subjects:", error);
       setLoading(false);
