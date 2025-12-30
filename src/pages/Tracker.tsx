@@ -46,7 +46,8 @@ interface AttendanceRecord {
   time_slot: string;
 }
 
-const TIMETABLE: TimetableData = {
+// Original timetable (before January 2, 2026)
+const TIMETABLE_ORIGINAL: TimetableData = {
   Monday: {
     "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
     "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
@@ -79,12 +80,56 @@ const TIMETABLE: TimetableData = {
   },
 };
 
-// Get all unique subject names from timetable
+// New timetable effective January 2, 2026
+const TIMETABLE_NEW: TimetableData = {
+  Monday: {
+    "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
+    "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
+    "9:45 - 10:45": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
+    "10:45 - 11:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
+  },
+  Tuesday: {
+    "8:00 - 9:00": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
+    "9:45 - 10:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+    "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+    "11:45 - 12:45": { subject: "Introduction to Graphic Design", professor: "Prof. Freddy Singaraj", room: "CC102" },
+  },
+  Wednesday: {
+    "7:00 - 8:00": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+    "8:00 - 9:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+    "9:45 - 10:45": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
+    "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+  },
+  Thursday: {
+    "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "10:45 - 11:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+    "11:45 - 12:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "102" },
+  },
+  Friday: {
+    "7:00 - 8:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "102" },
+    "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "9:45 - 10:45": { subject: "Retail Management", professor: "Prof. Anandaraman", room: "102" },
+    "10:45 - 11:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "102" },
+  },
+};
+
+// Date when new timetable becomes effective
+const NEW_TIMETABLE_EFFECTIVE_DATE = new Date("2026-01-02");
+
+// Get timetable based on date
+const getTimetableForDate = (date: Date): TimetableData => {
+  return date >= NEW_TIMETABLE_EFFECTIVE_DATE ? TIMETABLE_NEW : TIMETABLE_ORIGINAL;
+};
+
+// Get all unique subject names from both timetables
 const getAllSubjectNames = (): string[] => {
   const names = new Set<string>();
-  Object.values(TIMETABLE).forEach(day => {
-    Object.values(day).forEach(slot => {
-      names.add(slot.subject);
+  [TIMETABLE_ORIGINAL, TIMETABLE_NEW].forEach(timetable => {
+    Object.values(timetable).forEach(day => {
+      Object.values(day).forEach(slot => {
+        names.add(slot.subject);
+      });
     });
   });
   return Array.from(names);
@@ -106,10 +151,11 @@ const Tracker = () => {
   const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6;
   const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
-  // Get today's schedule with subjects
+  // Get today's schedule with subjects based on the selected date
   const getTodaysSchedule = () => {
     if (isWeekend) return [];
-    const daySchedule = TIMETABLE[selectedDayName];
+    const timetable = getTimetableForDate(selectedDate);
+    const daySchedule = timetable[selectedDayName];
     if (!daySchedule) return [];
     
     return Object.entries(daySchedule).map(([time, slot]) => {
