@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Menu, Undo2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 interface Subject {
@@ -362,6 +362,57 @@ const Tracker = () => {
     }
   };
 
+  const undoAttendance = async (subjectId: string, timeSlot: string) => {
+    if (!user || !subjectId) return;
+
+    const existingRecord = attendanceRecords.find(
+      r => r.subject_id === subjectId && r.date === selectedDateStr && r.time_slot === timeSlot
+    );
+
+    if (!existingRecord) return;
+
+    try {
+      const { error } = await supabase
+        .from("attendance_records")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId)
+        .eq("date", selectedDateStr)
+        .eq("time_slot", timeSlot);
+
+      if (error) throw error;
+
+      // Update local attendance records
+      setAttendanceRecords(prev => 
+        prev.filter(r => !(r.subject_id === subjectId && r.date === selectedDateStr && r.time_slot === timeSlot))
+      );
+
+      // Update subject counts
+      setSubjects((prev) =>
+        prev.map((subject) =>
+          subject.id === subjectId
+            ? {
+                ...subject,
+                attended: existingRecord.status === "present" ? subject.attended - 1 : subject.attended,
+                total: subject.total - 1,
+              }
+            : subject
+        )
+      );
+
+      toast({
+        title: "Attendance Removed",
+        description: `Lecture marked as not conducted for ${format(selectedDate, "MMM d")}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to undo attendance",
+        variant: "destructive",
+      });
+    }
+  };
+
   const goToPreviousDay = () => {
     const prev = new Date(selectedDate);
     prev.setDate(prev.getDate() - 1);
@@ -525,6 +576,17 @@ const Tracker = () => {
                             </div>
                             
                             <div className="flex gap-2 shrink-0">
+                              {status && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => slot.subjectId && undoAttendance(slot.subjectId, slot.time)}
+                                  className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                                  title="Undo - Lecture not conducted"
+                                >
+                                  <Undo2 className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 onClick={() => slot.subjectId && markAttendance(slot.subjectId, slot.time, true)}

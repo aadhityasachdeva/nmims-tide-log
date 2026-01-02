@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Check } from "lucide-react";
+import { CheckCircle2, XCircle, Check, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AttendanceCardProps {
@@ -11,6 +11,7 @@ interface AttendanceCardProps {
   credits: number;
   onMarkPresent: () => void;
   onMarkAbsent: () => void;
+  onUndo?: () => void;
   markedStatus?: string | null;
 }
 
@@ -21,6 +22,7 @@ const AttendanceCard = ({
   credits,
   onMarkPresent,
   onMarkAbsent,
+  onUndo,
   markedStatus,
 }: AttendanceCardProps) => {
   const totalClasses = credits * 15; // Total classes in semester based on credits
@@ -79,15 +81,28 @@ const AttendanceCard = ({
         </div>
 
         {markedStatus ? (
-          <div className={cn(
-            "flex items-center justify-center gap-2 py-2 px-4 rounded-md font-medium",
-            markedStatus === "present" 
-              ? "bg-success/20 text-success border border-success/30" 
-              : "bg-accent/20 text-accent border border-accent/30"
-          )}>
-            <Check className="h-4 w-4" />
-            Marked {markedStatus === "present" ? "Present" : "Absent"}
-            <span className="text-xs opacity-70">(tap to change)</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md font-medium",
+              markedStatus === "present" 
+                ? "bg-success/20 text-success border border-success/30" 
+                : "bg-accent/20 text-accent border border-accent/30"
+            )}>
+              <Check className="h-4 w-4" />
+              Marked {markedStatus === "present" ? "Present" : "Absent"}
+              <span className="text-xs opacity-70">(tap to change)</span>
+            </div>
+            {onUndo && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onUndo}
+                className="text-muted-foreground hover:text-foreground"
+                title="Undo - Lecture not conducted"
+              >
+                <Undo2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ) : null}
 
