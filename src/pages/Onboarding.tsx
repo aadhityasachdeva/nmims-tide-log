@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { GraduationCap, Loader2 } from "lucide-react";
 import askitLogo from "@/assets/askit-logo.jpeg";
@@ -116,14 +117,15 @@ const Onboarding = () => {
             
             <div className="space-y-2">
               <Label htmlFor="division">Division</Label>
-              <Input
-                id="division"
-                type="text"
-                placeholder="Enter your division"
-                value={division}
-                onChange={(e) => setDivision(e.target.value)}
-                className="border-primary/20 focus:border-primary"
-              />
+              <Select value={division} onValueChange={setDivision}>
+                <SelectTrigger className="border-primary/20 focus:border-primary">
+                  <SelectValue placeholder="Select your division" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B">Division B</SelectItem>
+                  <SelectItem value="D">Division D</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Button 
