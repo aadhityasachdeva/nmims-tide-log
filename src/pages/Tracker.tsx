@@ -46,8 +46,8 @@ interface AttendanceRecord {
   time_slot: string;
 }
 
-// Original timetable (before January 2, 2026)
-const TIMETABLE_ORIGINAL: TimetableData = {
+// Division B - Original timetable (before January 2, 2026)
+const TIMETABLE_B_ORIGINAL: TimetableData = {
   Monday: {
     "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
     "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
@@ -80,8 +80,8 @@ const TIMETABLE_ORIGINAL: TimetableData = {
   },
 };
 
-// New timetable effective January 2, 2026
-const TIMETABLE_NEW: TimetableData = {
+// Division B - New timetable effective January 2, 2026
+const TIMETABLE_B_NEW: TimetableData = {
   Monday: {
     "7:00 - 8:00": { subject: "Introduction to Visual Effect", professor: "Prof. Prashant Patil", room: "CC102" },
     "8:00 - 9:00": { subject: "Media Economics", professor: "Prof. Rohan Mehra", room: "102" },
@@ -114,18 +114,60 @@ const TIMETABLE_NEW: TimetableData = {
   },
 };
 
-// Date when new timetable becomes effective
-const NEW_TIMETABLE_EFFECTIVE_DATE = new Date("2026-01-02");
-
-// Get timetable based on date
-const getTimetableForDate = (date: Date): TimetableData => {
-  return date >= NEW_TIMETABLE_EFFECTIVE_DATE ? TIMETABLE_NEW : TIMETABLE_ORIGINAL;
+// Division D - Timetable
+const TIMETABLE_D: TimetableData = {
+  Monday: {
+    "7:00 - 8:00": { subject: "Retail Management", professor: "Prof. Madhupa Chatterjee", room: "104" },
+    "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Madhupa Chatterjee", room: "104" },
+    "9:45 - 10:45": { subject: "Media Economics", professor: "Prof. Vishal Khanna", room: "104" },
+    "10:45 - 11:45": { subject: "Media Economics", professor: "Prof. Vishal Khanna", room: "104" },
+  },
+  Tuesday: {
+    "7:00 - 8:00": { subject: "Retail Management", professor: "Prof. Madhupa Chatterjee", room: "104" },
+    "8:00 - 9:00": { subject: "Retail Management", professor: "Prof. Madhupa Chatterjee", room: "104" },
+    "9:45 - 10:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "104" },
+    "10:45 - 11:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "104" },
+    "11:45 - 12:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "104" },
+  },
+  Wednesday: {
+    "7:00 - 8:00": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "104" },
+    "8:00 - 9:00": { subject: "Introduction to Visual Effect", professor: "Prof. Freddy Singaraj", room: "CC102" },
+    "9:45 - 10:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "104" },
+    "10:45 - 11:45": { subject: "Introduction to Graphic Design", professor: "Prof. Prashant Patil", room: "CC102" },
+    "11:45 - 12:45": { subject: "Introduction to Graphic Design", professor: "Prof. Prashant Patil", room: "CC102" },
+  },
+  Thursday: {
+    "7:00 - 8:00": { subject: "Introduction to Graphic Design", professor: "Prof. Prashant Patil", room: "104" },
+    "8:00 - 9:00": { subject: "Introduction to Graphic Design", professor: "Prof. Prashant Patil", room: "104" },
+    "9:45 - 10:45": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "104" },
+    "10:45 - 11:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "104" },
+    "11:45 - 12:45": { subject: "Market Research - II", professor: "Dr. Kiran Desai", room: "104" },
+  },
+  Friday: {
+    "7:00 - 8:00": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "104" },
+    "8:00 - 9:00": { subject: "Entrepreneurship", professor: "Dr. Percy Vaid", room: "104" },
+    "9:45 - 10:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "104" },
+    "10:45 - 11:45": { subject: "Marketing Analytics", professor: "Prof. Ashish Mathur", room: "104" },
+    "11:45 - 12:45": { subject: "Introduction to Visual Effect", professor: "Prof. Freddy Singaraj", room: "104" },
+  },
 };
 
-// Get all unique subject names from both timetables
+// Date when new timetable becomes effective (only for Division B)
+const NEW_TIMETABLE_EFFECTIVE_DATE = new Date("2026-01-02");
+
+// Get timetable based on date and division
+const getTimetableForDate = (date: Date, division: string): TimetableData => {
+  if (division === "D") {
+    return TIMETABLE_D;
+  }
+  // Division B
+  return date >= NEW_TIMETABLE_EFFECTIVE_DATE ? TIMETABLE_B_NEW : TIMETABLE_B_ORIGINAL;
+};
+
+// Get all unique subject names from all timetables
 const getAllSubjectNames = (): string[] => {
   const names = new Set<string>();
-  [TIMETABLE_ORIGINAL, TIMETABLE_NEW].forEach(timetable => {
+  [TIMETABLE_B_ORIGINAL, TIMETABLE_B_NEW, TIMETABLE_D].forEach(timetable => {
     Object.values(timetable).forEach(day => {
       Object.values(day).forEach(slot => {
         names.add(slot.subject);
@@ -151,10 +193,10 @@ const Tracker = () => {
   const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6;
   const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
-  // Get today's schedule with subjects based on the selected date
+  // Get today's schedule with subjects based on the selected date and division
   const getTodaysSchedule = () => {
     if (isWeekend) return [];
-    const timetable = getTimetableForDate(selectedDate);
+    const timetable = getTimetableForDate(selectedDate, profile?.division || "B");
     const daySchedule = timetable[selectedDayName];
     if (!daySchedule) return [];
     
