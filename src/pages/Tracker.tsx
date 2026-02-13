@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Menu, Undo2 } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Menu, Undo2, CheckCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 interface Subject {
@@ -455,6 +455,22 @@ const Tracker = () => {
     }
   };
 
+  const markAllPresent = async () => {
+    const unmarkedSlots = todaysSchedule.filter(
+      slot => slot.subjectId && !getAttendanceStatus(slot.subjectId, slot.time)
+    );
+    if (unmarkedSlots.length === 0) {
+      toast({ title: "Already Done", description: "All lectures are already marked." });
+      return;
+    }
+    for (const slot of unmarkedSlots) {
+      if (slot.subjectId) {
+        await markAttendance(slot.subjectId, slot.time, true);
+      }
+    }
+    toast({ title: "All Present!", description: `Marked present for ${unmarkedSlots.length} lecture(s).` });
+  };
+
   const goToPreviousDay = () => {
     const prev = new Date(selectedDate);
     prev.setDate(prev.getDate() - 1);
@@ -579,7 +595,19 @@ const Tracker = () => {
             {/* Schedule & Attendance */}
             <Card className="bg-card border-primary/20">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">{selectedDayName}'s Classes</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{selectedDayName}'s Classes</CardTitle>
+                  {!isWeekend && todaysSchedule.length > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={markAllPresent}
+                      className="gap-1.5 bg-success/20 text-success hover:bg-success hover:text-white"
+                    >
+                      <CheckCheck className="h-4 w-4" />
+                      Present for Whole Day
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {isWeekend ? (
